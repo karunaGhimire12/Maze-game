@@ -1,0 +1,4 @@
+
+[tool.taskipy.tasks]
+start = "python app/src/main.py"
+
