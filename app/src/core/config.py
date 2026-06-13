@@ -99,4 +99,4 @@ CONFUSION_STUB_RATIO = 0.28
 # Do not edit by hand — run `task version:sync` (or
 # `task version:patch` / `:minor` / `:major`) to update it
 # everywhere at once (VERSION file, pyproject.toml, here).
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.0"
