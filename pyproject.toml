@@ -1,4 +1,28 @@
-
 [tool.taskipy.tasks]
+
+# Run application
 start = "python app/src/main.py"
 
+# Development server
+dev = "uvicorn app.src.main:app --reload"
+
+# Run tests
+test = "pytest"
+
+# Format code
+format = "black ."
+
+# Lint code
+lint = "flake8 ."
+
+# Build package
+build = "python -m build"
+
+# Create git tag and push
+release = "python scripts/release.py"
+
+# Sync version
+version = "1.0.0"
+
+# 2. Runs your smart environment script to install dependencies or sync new packages
+setup = "powershell -ExecutionPolicy Bypass -File ./setup_venv.ps1"
