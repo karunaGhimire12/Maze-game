@@ -91,3 +91,12 @@ LIGHTS_OUT_RADIUS_PX = 110    # pixel radius of the light circle around player
 # ── Maze confusion — FIX #5 ───────────────────────────────────────────────────
 # Fraction of eligible wall cells converted into dead-end stubs.
 CONFUSION_STUB_RATIO = 0.28
+
+
+
+# ── App Version ───────────────────────────────────────────
+# NOTE: This value is auto-managed by scripts/version_sync.py.
+# Do not edit by hand — run `task version:sync` (or
+# `task version:patch` / `:minor` / `:major`) to update it
+# everywhere at once (VERSION file, pyproject.toml, here).
+APP_VERSION = "1.0.0"
