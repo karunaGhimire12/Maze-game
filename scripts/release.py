@@ -1,7 +1,9 @@
-import re
-import subprocess
 from pathlib import Path
+import subprocess
+import re
+import sys
 
+# Read version
 content = Path("pyproject.toml").read_text()
 
 match = re.search(
@@ -15,15 +17,43 @@ if not match:
 version = match.group(1)
 tag = f"v{version}"
 
+print(f"Building {tag}")
+
+# Build executable
+subprocess.run([
+    "pyinstaller",
+    "--onefile",
+    "--windowed",
+    "app/src/main.py"
+], check=True)
+
+exe = Path("dist/main.exe")
+
+if not exe.exists():
+    raise Exception("Build failed")
+
+# Git operations
 commands = [
     ["git", "add", "."],
     ["git", "commit", "-m", f"release: {tag}"],
     ["git", "tag", tag],
     ["git", "push"],
-    ["git", "push", "origin", tag],
+    ["git", "push", "origin", tag]
 ]
 
 for cmd in commands:
     subprocess.run(cmd, check=True)
 
-print(f"Released {tag}")
+# Create release and upload exe
+subprocess.run([
+    "gh",
+    "release",
+    "create",
+    tag,
+    str(exe),
+    "--title",
+    tag,
+    "--generate-notes"
+], check=True)
+
+print(f"Release {tag} published")

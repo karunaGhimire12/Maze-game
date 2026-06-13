@@ -16,13 +16,15 @@ format = "black ."
 lint = "flake8 ."
 
 # Build package
-build = "python -m build"
+build = "python scripts/build.py"
 
 # Create git tag and push
 release = "python scripts/release.py"
 
-# Sync version
 version = "1.0.0"
+
+# Sync version
+version_sync = "python scripts/version_sync.py"
 
 # 2. Runs your smart environment script to install dependencies or sync new packages
 setup = "powershell -ExecutionPolicy Bypass -File ./setup_venv.ps1"
