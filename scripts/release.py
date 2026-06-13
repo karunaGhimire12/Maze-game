@@ -6,6 +6,8 @@ import sys
 # Read version
 content = Path("pyproject.toml").read_text()
 
+
+
 match = re.search(
     r'version\s*=\s*"([^"]+)"',
     content
@@ -16,6 +18,17 @@ if not match:
 
 version = match.group(1)
 tag = f"v{version}"
+
+existing_tags = subprocess.check_output(
+    ["git", "tag"],
+    text=True
+).splitlines()
+
+if tag in existing_tags:
+    raise Exception(
+        f"{tag} already exists. Run:\n"
+        f"task version <new_version>"
+    )
 
 print(f"Building {tag}")
 
@@ -32,16 +45,7 @@ exe = Path("dist/main.exe")
 if not exe.exists():
     raise Exception("Build failed")
 
-existing_tags = subprocess.check_output(
-    ["git", "tag"],
-    text=True
-).splitlines()
 
-if tag in existing_tags:
-    raise Exception(
-        f"{tag} already exists. Run:\n"
-        f"task version <new_version>"
-    )
 
 # Git operations
 commands = [
