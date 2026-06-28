@@ -5,8 +5,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Window ────────────────────────────────────────────────────────────────────
-SCREEN_WIDTH  = 900
-SCREEN_HEIGHT = 700
+SCREEN_WIDTH  = None
+SCREEN_HEIGHT = None
 MIN_SCREEN_WIDTH = 640
 MIN_SCREEN_HEIGHT = 520
 HUD_HEIGHT    = 74           # title bar, timer, lives, pause button
@@ -102,7 +102,7 @@ PLAYER_RADIUS = CELL_SIZE // 2 - 3   # visual radius for rectangular mode
 QUIZ_TIME_EASY   = 10.0   # seconds before auto-close
 QUIZ_TIME_MEDIUM = 15.0
 QUIZ_TIME_HARD   = 20.0
-QUIZ_RESULT_SHOW = 3.0    # seconds the correct/wrong banner stays visible
+QUIZ_RESULT_SHOW = 2.0    # seconds the correct/wrong banner stays visible
 QUIZ_TIMEOUT_SHOW= 2.0    # seconds the "Time Out!" overlay stays visible
 
 # Bonus time awarded for a correct answer
@@ -121,7 +121,7 @@ LIGHTS_OUT_RADIUS_PX = 110    # pixel radius of the light circle around player
 
 # ── Maze confusion — FIX #5 ───────────────────────────────────────────────────
 # Fraction of eligible wall cells converted into dead-end stubs.
-CONFUSION_STUB_RATIO = 0.42
+CONFUSION_STUB_RATIO = 0.82
 
 # ── Movement ─────────────────────────────────────────────────────────────────
 MOVE_SPEED_CELLS = 8.5

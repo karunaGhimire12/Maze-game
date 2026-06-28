@@ -1,19 +1,24 @@
 # core/game.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Central Game class — owns state machine, connects maze/player/renderer/
-# screens.  All six architectural fixes are wired here:
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Game Controller
 #
-#   FIX #1 — Circular movement directions passed correctly to CircularMaze
-#   FIX #2 — Ultimate mode uses Renderer(cell=ULT_CELL_SIZE); camera handled
-#             inside Renderer._update_camera()
-#   FIX #3 — Lights-Out: S_PREVIEW state holds for LIGHTS_OUT_PREVIEW_S secs,
-#             then renderer draws fog mask
-#   FIX #4 — Quiz: QuizPopup.update(dt) drives countdown + timeout + result
-#             timers; verdicts handled here
-#   FIX #5 — Maze generated with high confusion (dead-end stubs) via
-#             Maze._add_confusion()
-#   FIX #6 — Pause menu: ESC key + HUD button both toggle S_PAUSED; pause
-#             screen exposes Resume / Restart / Quit
+# This file is the heart of the Maze Quest game.
+#
+# The Game class manages everything that happens during gameplay.
+# It connects all other parts of the game together, such as:
+#
+# • Maze generation
+# • Player movement
+# • Renderer (drawing everything on the screen)
+# • Timer and lives
+# • Quiz popup system
+# • Pause menu
+# • Game Over screen
+# • Victory screen
+#
+# It also controls the game's different states.
 # ─────────────────────────────────────────────────────────────────────────────
 
 import pygame
@@ -380,7 +385,7 @@ class Game:
         if self.state == S_QUIZ and self.quiz_popup:
             self.quiz_popup.draw(screen)
 
-        elif self.state == S_PAUSED:               # FIX #6
+        elif self.state == S_PAUSED:              
             self.pause_screen.draw(screen)
 
         elif self.state == S_GAMEOVER and self.gameover_screen:

@@ -3,8 +3,9 @@
 # Thin game-loop wrapper.  Drives one Game instance per call to run().
 # Returns a routing token so main.py knows what to do next:
 #   "menu"  → go back to mode-selection screen
-#   "retry" → rebuild the same mode from scratch
+#   "restart" → rebuild the same mode from scratch
 #   None    → window was closed (quit)
+#Engine → controls the game loop and window
 # ─────────────────────────────────────────────────────────────────────────────
 
 import pygame
