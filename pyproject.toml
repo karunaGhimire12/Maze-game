@@ -45,6 +45,7 @@ build = "python scripts/build.py"
 #   4. create git tag        5. push commit + tag  6. publish GitHub
 #      release with the executable attached and auto-generated notes.
 #
+
 #   task release         -> defaults to a PATCH bump
 #   task release:patch
 #   task release:minor

@@ -3,12 +3,13 @@
 # Thin game-loop wrapper.  Drives one Game instance per call to run().
 # Returns a routing token so main.py knows what to do next:
 #   "menu"  → go back to mode-selection screen
-#   "retry" → rebuild the same mode from scratch
+#   "restart" → rebuild the same mode from scratch
 #   None    → window was closed (quit)
+#Engine → controls the game loop and window
 # ─────────────────────────────────────────────────────────────────────────────
 
 import pygame
-from core.config import FPS
+from core.config import FPS, MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT
 
 
 class Engine:
@@ -30,6 +31,12 @@ class Engine:
                 if event.type == pygame.QUIT:
                     self.running = False
                     return None                   # caller should quit
+
+                if event.type == pygame.VIDEORESIZE:
+                    w = max(MIN_SCREEN_WIDTH, event.w)
+                    h = max(MIN_SCREEN_HEIGHT, event.h)
+                    screen = pygame.display.set_mode((w, h), pygame.RESIZABLE)
+                    continue
 
                 result = game.handle_event(event)
                 if result in ("menu", "retry"):

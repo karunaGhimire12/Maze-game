@@ -111,8 +111,13 @@ class Maze:
 
         self._rng.shuffle(candidates)
         quota = int(len(candidates) * CONFUSION_STUB_RATIO)
-        for r, c in candidates[:quota]:
-            self.grid[r][c] = 0   # open the dead-end stub
+        carved = 0
+        for r, c in candidates:
+            if carved >= quota:
+                break
+            if self._count_open_neighbors(r, c) == 1:
+                self.grid[r][c] = 0   # still a dead-end stub at carve time
+                carved += 1
 
     # ── junction detection ────────────────────────────────────────────────────
 
@@ -147,6 +152,13 @@ class Maze:
 
     def is_junction(self, row: int, col: int) -> bool:
         return (row, col) in self.junctions
+
+    def open_directions(self, row: int, col: int):
+        dirs = []
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            if self.is_walkable(row + dr, col + dc):
+                dirs.append((dr, dc))
+        return dirs
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -196,11 +208,10 @@ class CircularMaze:
         self.junctions      = set()
 
         self._init_all_walls()
-        self._dfs_generate()
-        self._find_junctions()
-
         self.start = (rings - 1, 0)   # outermost ring, sector 0
         self.goal  = (0, 0)           # centre cell
+        self._dfs_generate()
+        self._find_junctions()
 
     # ── wall initialisation ───────────────────────────────────────────────────
 
@@ -352,3 +363,10 @@ class CircularMaze:
             return None
 
         return None
+
+    def open_directions(self, ring: int, sec: int):
+        dirs = []
+        for direction in ("out", "in", "ccw", "cw"):
+            if self.can_move(ring, sec, direction) is not None:
+                dirs.append(direction)
+        return dirs

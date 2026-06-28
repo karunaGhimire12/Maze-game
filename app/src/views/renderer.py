@@ -22,6 +22,7 @@
 
 import pygame
 import math
+import pygame.gfxdraw
 
 from core.config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, HUD_HEIGHT,
@@ -82,6 +83,8 @@ class Renderer:
         self.cam_x    = 0    # world-pixel X of the top-left of the viewport
         self.cam_y    = 0    # world-pixel Y of the top-left of the viewport
         self._pb_rect = None  # pause button Rect, set during draw
+        self._screen_w = SCREEN_WIDTH
+        self._screen_h = SCREEN_HEIGHT
 
     # ── font lazy init ────────────────────────────────────────────────────────
 
@@ -90,14 +93,16 @@ class Renderer:
             self._fonts = {
                 "hud": _font(21, bold=True),
                 "btn": _font(14, bold=True),
+                "title": _font(26, bold=True),
+                "mode": _font(14, bold=True),
             }
 
     # ── camera ────────────────────────────────────────────────────────────────
     # FIX #2
 
     def _update_camera(self, maze, player, use_camera: bool):
-        vp_w = SCREEN_WIDTH
-        vp_h = SCREEN_HEIGHT - HUD_HEIGHT
+        vp_w = self._screen_w
+        vp_h = self._screen_h - HUD_HEIGHT
 
         if not use_camera:
             # Centre the entire maze in the viewport
@@ -133,6 +138,7 @@ class Renderer:
              preview: bool = False,
              preview_timer: float = 0):
         self._ensure_fonts()
+        self._screen_w, self._screen_h = screen.get_size()
         use_camera = (mode == MODE_ULTIMATE)
         self._update_camera(maze, player, use_camera)
 
@@ -140,7 +146,7 @@ class Renderer:
         self._draw_hud(screen, player, timer, mode)
 
         # Clip drawing to the game viewport (below HUD)
-        vp = pygame.Rect(0, HUD_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - HUD_HEIGHT)
+        vp = pygame.Rect(0, HUD_HEIGHT, self._screen_w, self._screen_h - HUD_HEIGHT)
         screen.set_clip(vp)
 
         self._draw_cells(screen, maze)
@@ -163,9 +169,9 @@ class Renderer:
     # ── HUD ───────────────────────────────────────────────────────────────────
 
     def _draw_hud(self, screen, player, timer, mode):
-        pygame.draw.rect(screen, HUD_BG, (0, 0, SCREEN_WIDTH, HUD_HEIGHT))
-        pygame.draw.line(screen, WALL_COLOR,
-                         (0, HUD_HEIGHT), (SCREEN_WIDTH, HUD_HEIGHT), 2)
+        W = self._screen_w
+        pygame.draw.rect(screen, HUD_BG, (0, 0, W, HUD_HEIGHT))
+        pygame.draw.line(screen, WALL_COLOR, (0, HUD_HEIGHT), (W, HUD_HEIGHT), 2)
         f = self._fonts["hud"]
 
         # Timer (left)
@@ -174,18 +180,21 @@ class Renderer:
             secs = int(timer) % 60
             color = CORRECT_COLOR if timer > 30 else WRONG_COLOR
             ts = f.render(f"⏱ {mins}:{secs:02d}", True, color)
-            screen.blit(ts, (15, (HUD_HEIGHT - ts.get_height()) // 2))
+            screen.blit(ts, (14, HUD_HEIGHT - ts.get_height() - 12))
 
-        # Mode label (centre)
+        title = self._fonts["title"].render("Maze Quest", True, TEXT_COLOR)
+        tx = W // 2 - title.get_width() // 2
+        screen.blit(title, (tx, 10))
+        self._draw_logo(screen, tx + title.get_width() + 12, 18)
+
         if mode:
-            ms = f.render(mode, True, ACCENT)
-            screen.blit(ms, (SCREEN_WIDTH // 2 - ms.get_width() // 2,
-                              (HUD_HEIGHT - ms.get_height()) // 2))
+            ms = self._fonts["mode"].render(mode, True, ACCENT)
+            screen.blit(ms, (W // 2 - ms.get_width() // 2, 42))
 
         # Lives (right — hearts)
         for i in range(player.lives):
-            hx = SCREEN_WIDTH - 220 - i * 30   # leave room for pause button
-            hy = HUD_HEIGHT // 2
+            hx = W - 220 - i * 30   # leave room for pause button
+            hy = HUD_HEIGHT - 25
             pygame.draw.circle(screen, HEART_COLOR, (hx, hy), 10)
             pygame.draw.circle(screen, (255, 120, 138), (hx - 3, hy - 4), 4)
             pygame.draw.circle(screen, (255, 120, 138), (hx + 3, hy - 4), 4)
@@ -193,7 +202,7 @@ class Renderer:
     # ── FIX #6 — pause button ─────────────────────────────────────────────────
 
     def _draw_pause_btn(self, screen):
-        rect = pygame.Rect(SCREEN_WIDTH - 170, 12, 82, 36)
+        rect = pygame.Rect(self._screen_w - 100, HUD_HEIGHT - 48, 82, 34)
         _draw_rr(screen, DARK_GRAY, rect, r=8, border=1, bc=PAUSE_COLOR)
         s = self._fonts["btn"].render("⏸ PAUSE", True, PAUSE_COLOR)
         screen.blit(s, (rect.centerx - s.get_width() // 2,
@@ -212,9 +221,9 @@ class Renderer:
             for c in range(maze.cols):
                 sx, sy = self.world_to_screen(r, c)
                 # Skip cells entirely outside the viewport for performance
-                if sx + cell < 0 or sx > SCREEN_WIDTH:
+                if sx + cell < 0 or sx > self._screen_w:
                     continue
-                if sy + cell < HUD_HEIGHT or sy > SCREEN_HEIGHT:
+                if sy + cell < HUD_HEIGHT or sy > self._screen_h:
                     continue
 
                 color = WALL_COLOR if maze.grid[r][c] == 1 else PATH_COLOR
@@ -239,7 +248,7 @@ class Renderer:
         pygame.draw.circle(screen, (180, 255, 180), (cx_, cy_), max(1, r // 2))
 
     def _draw_player(self, screen, player):
-        sx, sy = self.world_to_screen(player.row, player.col)
+        sx, sy = self.world_to_screen(player.visual_row, player.visual_col)
         cx_ = sx + self.cell // 2
         cy_ = sy + self.cell // 2
         r   = self.cell // 2 - 3
@@ -262,25 +271,25 @@ class Renderer:
         radius gets an alpha proportional to (dist / radius)^2 so the edge
         fades naturally.  Pixels outside are fully opaque black.
         """
-        sx, sy = self.world_to_screen(player.row, player.col)
+        sx, sy = self.world_to_screen(player.visual_row, player.visual_col)
         pcx = sx + self.cell // 2
         pcy = sy + self.cell // 2
         radius = LIGHTS_OUT_RADIUS_PX
 
-        fog = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        fog = pygame.Surface((self._screen_w, self._screen_h), pygame.SRCALPHA)
         fog.fill((0, 0, 0, 255))   # start fully black
 
         # Carve a smooth hole — iterate over the bounding square
         for dy in range(-radius, radius + 1):
             fy = pcy + dy
-            if fy < HUD_HEIGHT or fy >= SCREEN_HEIGHT:
+            if fy < HUD_HEIGHT or fy >= self._screen_h:
                 continue
             for dx in range(-radius, radius + 1):
                 dist = math.hypot(dx, dy)
                 if dist > radius:
                     continue
                 fx = pcx + dx
-                if fx < 0 or fx >= SCREEN_WIDTH:
+                if fx < 0 or fx >= self._screen_w:
                     continue
                 # alpha=0 at centre, 255 at edge — smooth radial gradient
                 alpha = int(255 * (dist / radius) ** 2)
@@ -297,9 +306,16 @@ class Renderer:
         s   = f.render(txt, True, PLAYER_COLOR)
         ov  = pygame.Surface((s.get_width() + 40, 44), pygame.SRCALPHA)
         ov.fill((4, 14, 24, 215))
-        bx  = SCREEN_WIDTH // 2 - (s.get_width() + 40) // 2
+        bx  = self._screen_w // 2 - (s.get_width() + 40) // 2
         screen.blit(ov, (bx, HUD_HEIGHT + 8))
-        screen.blit(s,  (SCREEN_WIDTH // 2 - s.get_width() // 2, HUD_HEIGHT + 12))
+        screen.blit(s,  (self._screen_w // 2 - s.get_width() // 2, HUD_HEIGHT + 12))
+
+    def _draw_logo(self, screen, x, y):
+        x = min(x, self._screen_w - 138)
+        rect = pygame.Rect(x, y, 34, 34)
+        pygame.draw.circle(screen, ACCENT, rect.center, 16, 2)
+        pygame.draw.arc(screen, PLAYER_COLOR, rect.inflate(-8, -8), 0.2, 4.9, 3)
+        pygame.draw.circle(screen, PLAYER_COLOR, (rect.centerx + 7, rect.centery - 7), 4)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -332,6 +348,8 @@ class CircularRenderer:
         self._fonts   = {}
         self._pb_rect = None
         self._rw      = CIRCULAR_RING_WIDTH
+        self._screen_w = SCREEN_WIDTH
+        self._screen_h = SCREEN_HEIGHT
 
     def _ensure_fonts(self):
         if not self._fonts:
@@ -339,16 +357,19 @@ class CircularRenderer:
                 "hud":  _font(21, bold=True),
                 "btn":  _font(14, bold=True),
                 "hint": _font(13),
+                "title": _font(26, bold=True),
+                "mode": _font(14, bold=True),
             }
 
     def _centre(self):
-        return (SCREEN_WIDTH // 2,
-                HUD_HEIGHT + (SCREEN_HEIGHT - HUD_HEIGHT) // 2)
+        return (self._screen_w // 2,
+                HUD_HEIGHT + (self._screen_h - HUD_HEIGHT) // 2)
 
     # ── main entry ────────────────────────────────────────────────────────────
 
     def draw(self, screen, maze, player, timer=None, mode=None):
         self._ensure_fonts()
+        self._screen_w, self._screen_h = screen.get_size()
         screen.fill(BG_COLOR)
         self._draw_hud(screen, player, timer, mode)
         self._draw_maze(screen, maze, player)
@@ -357,9 +378,9 @@ class CircularRenderer:
     # ── HUD ───────────────────────────────────────────────────────────────────
 
     def _draw_hud(self, screen, player, timer, mode):
-        pygame.draw.rect(screen, HUD_BG, (0, 0, SCREEN_WIDTH, HUD_HEIGHT))
-        pygame.draw.line(screen, WALL_COLOR,
-                         (0, HUD_HEIGHT), (SCREEN_WIDTH, HUD_HEIGHT), 2)
+        W = self._screen_w
+        pygame.draw.rect(screen, HUD_BG, (0, 0, W, HUD_HEIGHT))
+        pygame.draw.line(screen, WALL_COLOR, (0, HUD_HEIGHT), (W, HUD_HEIGHT), 2)
         f = self._fonts["hud"]
 
         if timer is not None:
@@ -367,16 +388,20 @@ class CircularRenderer:
             secs = int(timer) % 60
             color = CORRECT_COLOR if timer > 30 else WRONG_COLOR
             ts = f.render(f"⏱ {mins}:{secs:02d}", True, color)
-            screen.blit(ts, (15, (HUD_HEIGHT - ts.get_height()) // 2))
+            screen.blit(ts, (14, HUD_HEIGHT - ts.get_height() - 12))
+
+        title = self._fonts["title"].render("Maze Quest", True, TEXT_COLOR)
+        tx = W // 2 - title.get_width() // 2
+        screen.blit(title, (tx, 10))
+        self._draw_logo(screen, tx + title.get_width() + 12, 18)
 
         if mode:
-            ms = f.render(mode, True, ACCENT)
-            screen.blit(ms, (SCREEN_WIDTH // 2 - ms.get_width() // 2,
-                              (HUD_HEIGHT - ms.get_height()) // 2))
+            ms = self._fonts["mode"].render(mode, True, ACCENT)
+            screen.blit(ms, (W // 2 - ms.get_width() // 2, 42))
 
         for i in range(player.lives):
-            hx = SCREEN_WIDTH - 220 - i * 30
-            hy = HUD_HEIGHT // 2
+            hx = W - 220 - i * 30
+            hy = HUD_HEIGHT - 25
             pygame.draw.circle(screen, HEART_COLOR, (hx, hy), 10)
             pygame.draw.circle(screen, (255, 120, 138), (hx - 3, hy - 4), 4)
             pygame.draw.circle(screen, (255, 120, 138), (hx + 3, hy - 4), 4)
@@ -384,7 +409,7 @@ class CircularRenderer:
     # ── FIX #6 ────────────────────────────────────────────────────────────────
 
     def _draw_pause_btn(self, screen):
-        rect = pygame.Rect(SCREEN_WIDTH - 170, 12, 82, 36)
+        rect = pygame.Rect(self._screen_w - 100, HUD_HEIGHT - 48, 82, 34)
         _draw_rr(screen, DARK_GRAY, rect, r=8, border=1, bc=PAUSE_COLOR)
         s = self._fonts["btn"].render("⏸ PAUSE", True, PAUSE_COLOR)
         screen.blit(s, (rect.centerx - s.get_width() // 2,
@@ -398,7 +423,7 @@ class CircularRenderer:
 
     def _draw_maze(self, screen, maze, player):
         cx, cy = self._centre()
-        rw     = self._rw
+        rw = min(self._rw, max(22, int((min(self._screen_w, self._screen_h - HUD_HEIGHT) - 48) / (maze.rings * 2))))
 
         for ring in range(maze.rings):
             inner_r = ring * rw
@@ -410,18 +435,15 @@ class CircularRenderer:
                 a0 = sec * step - math.pi / 2    # start angle (top = -π/2)
                 a1 = a0 + step                    # end angle
 
-                is_player = (ring == player.ring and sec == player.sector)
                 is_goal   = (ring == maze.goal[0] and sec == maze.goal[1])
 
                 # Fill cell arc
-                cell_color = (PLAYER_COLOR if is_player
-                              else GOAL_COLOR if is_goal
-                              else PATH_COLOR)
+                cell_color = GOAL_COLOR if is_goal else PATH_COLOR
                 self._fill_arc(screen, cx, cy, inner_r, outer_r,
                                a0, a1, cell_color)
 
                 # Junction dot
-                if maze.is_junction(ring, sec) and not is_player and not is_goal:
+                if maze.is_junction(ring, sec) and not is_goal:
                     mid_r = (inner_r + outer_r) / 2
                     mid_a = (a0 + a1) / 2
                     dx_ = cx + mid_r * math.cos(mid_a)
@@ -444,20 +466,44 @@ class CircularRenderer:
                     pygame.draw.line(screen, WALL_COLOR,
                                      (int(wx_in),  int(wy_in)),
                                      (int(wx_out), int(wy_out)), 2)
+                    pygame.draw.aaline(screen, WALL_COLOR,
+                                       (int(wx_in),  int(wy_in)),
+                                       (int(wx_out), int(wy_out)))
 
         # Outer boundary circle
         pygame.draw.circle(screen, WALL_COLOR,
                            (cx, cy), maze.rings * rw, 2)
 
-        # Centre goal indicator
-        pygame.draw.circle(screen, GOAL_COLOR, (cx, cy), rw // 2)
-        pygame.draw.circle(screen, (180, 255, 180), (cx, cy), max(1, rw // 4))
+        self._draw_circular_player(screen, cx, cy, rw, maze, player)
 
         # Orientation hint
         hint = "↑ Outward  ↓ Inward  ← → Rotate  •  Goal = Centre"
         hs = self._fonts["hint"].render(hint, True, GRAY)
-        screen.blit(hs, (SCREEN_WIDTH // 2 - hs.get_width() // 2,
-                         SCREEN_HEIGHT - 22))
+        screen.blit(hs, (self._screen_w // 2 - hs.get_width() // 2,
+                         self._screen_h - 22))
+
+    def _draw_circular_player(self, screen, cx, cy, rw, maze, player):
+        ring = player.visual_ring
+        logical_ring = max(0, min(maze.rings - 1, int(round(player.ring))))
+        sectors = maze.spr[logical_ring]
+        sec = player.visual_sector % sectors
+        radius = (ring + 0.5) * rw
+        angle = (sec + 0.5) * (2 * math.pi / sectors) - math.pi / 2
+        px = int(cx + radius * math.cos(angle))
+        py = int(cy + radius * math.sin(angle))
+        r = max(6, rw // 4)
+        glow = pygame.Surface((r * 5, r * 5), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*PLAYER_COLOR, 70), (r * 2, r * 2), r * 2)
+        screen.blit(glow, (px - r * 2, py - r * 2))
+        pygame.draw.circle(screen, PLAYER_COLOR, (px, py), r)
+        pygame.draw.circle(screen, WHITE, (px - r // 3, py - r // 3), max(2, r // 3))
+
+    def _draw_logo(self, screen, x, y):
+        x = min(x, self._screen_w - 138)
+        rect = pygame.Rect(x, y, 34, 34)
+        pygame.draw.circle(screen, ACCENT, rect.center, 16, 2)
+        pygame.draw.arc(screen, PLAYER_COLOR, rect.inflate(-8, -8), 0.2, 4.9, 3)
+        pygame.draw.circle(screen, PLAYER_COLOR, (rect.centerx + 7, rect.centery - 7), 4)
 
     # ── arc helpers ───────────────────────────────────────────────────────────
 
@@ -475,8 +521,9 @@ class CircularRenderer:
             pts.append((cx + r_in * math.cos(a),
                         cy + r_in * math.sin(a)))
         if len(pts) >= 3:
-            pygame.draw.polygon(screen, color,
-                                [(int(x), int(y)) for x, y in pts])
+            ipts = [(int(x), int(y)) for x, y in pts]
+            pygame.gfxdraw.filled_polygon(screen, ipts, color)
+            pygame.gfxdraw.aapolygon(screen, ipts, color)
 
     def _arc_line(self, screen, cx, cy, radius, a0, a1, color, width):
         """Draw a polyline approximating an arc at the given radius."""
@@ -488,3 +535,4 @@ class CircularRenderer:
         ]
         if len(pts) >= 2:
             pygame.draw.lines(screen, color, False, pts, width)
+            pygame.draw.aalines(screen, color, False, pts)

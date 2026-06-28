@@ -30,8 +30,9 @@ from core.config import (
     PLAYER_LIVES,
     QUIZ_TIME_EASY, QUIZ_TIME_MEDIUM, QUIZ_TIME_HARD,
     QUIZ_RESULT_SHOW, QUIZ_TIMEOUT_SHOW,
-    BONUS_EASY, BONUS_HARD,
+    BONUS_EASY, BONUS_MEDIUM, BONUS_HARD,
     MODE_TIME_ATTACK, MODE_LIGHTS_OUT, MODE_ULTIMATE, MODE_CIRCULAR,
+    DIFF_EASY, DIFF_MEDIUM, DIFF_HARD, DIFFICULTY_LABELS,
     BG_COLOR, WALL_COLOR, TEXT_COLOR, ACCENT, CORRECT_COLOR, WRONG_COLOR,
     CARD_BG, CARD_BORDER, DARK_GRAY, GRAY, WHITE, PAUSE_COLOR, GOAL_COLOR,
     PLAYER_COLOR,
@@ -96,6 +97,8 @@ class MainMenuScreen:
 
     def __init__(self):
         self._card_rects = []
+        self._diff_rects = []
+        self._difficulty_mode = None
         self._tick       = 0
         self._fonts      = {}
 
@@ -107,14 +110,32 @@ class MainMenuScreen:
                 "mode":  _font(20, bold=True),
                 "desc":  _font(13),
                 "label": _font(12, bold=True),
+                "back":  _font(15, bold=True),
             }
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
+            if self._difficulty_mode:
+                for diff, rect in self._diff_rects:
+                    if rect.collidepoint(mx, my):
+                        mode = self._difficulty_mode
+                        self._difficulty_mode = None
+                        return (mode, diff)
+                if pygame.Rect(24, 112, 96, 34).collidepoint(mx, my):
+                    self._difficulty_mode = None
+                return None
+
             for i, rect in enumerate(self._card_rects):
                 if rect.collidepoint(mx, my):
-                    return _MODES_DEF[i]["id"]
+                    mode = _MODES_DEF[i]["id"]
+                    if mode in (MODE_TIME_ATTACK, MODE_CIRCULAR):
+                        self._difficulty_mode = mode
+                        return None
+                    return (mode, None)
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self._difficulty_mode = None
         return None
 
     def draw(self, screen):
@@ -132,9 +153,14 @@ class MainMenuScreen:
         # Title
         ts = self._fonts["title"].render("MAZE QUEST", True, TEXT_COLOR)
         screen.blit(ts, (W // 2 - ts.get_width() // 2, 24))
+        self._draw_logo(screen, W // 2 + ts.get_width() // 2 + 14, 36)
         ss = self._fonts["sub"].render(
             "Navigate  •  Answer  •  Conquer", True, GRAY)
         screen.blit(ss, (W // 2 - ss.get_width() // 2, 82))
+
+        if self._difficulty_mode:
+            self._draw_difficulty_picker(screen, W, H)
+            return
 
         lbl = self._fonts["label"].render("SELECT GAME MODE", True, GRAY)
         screen.blit(lbl, (28, 118))
@@ -185,6 +211,42 @@ class MainMenuScreen:
             s = fnt.render(text, True, color)
             screen.blit(s, (28, hy))
             hy += 18
+
+    def _draw_logo(self, screen, x, y):
+        rect = pygame.Rect(min(x, screen.get_width() - 90), y, 42, 42)
+        pygame.draw.circle(screen, ACCENT, rect.center, 19, 2)
+        pygame.draw.arc(screen, PLAYER_COLOR, rect.inflate(-10, -10), 0.2, 4.9, 4)
+        pygame.draw.circle(screen, PLAYER_COLOR, (rect.centerx + 8, rect.centery - 8), 5)
+
+    def _draw_difficulty_picker(self, screen, W, H):
+        back = pygame.Rect(24, 112, 96, 34)
+        _draw_rr(screen, DARK_GRAY, back, r=8, border=1, bc=GRAY)
+        _center_text(screen, "BACK", self._fonts["back"], GRAY, back.centerx, back.y + 8)
+
+        label = self._fonts["label"].render(f"{self._difficulty_mode.upper()} DIFFICULTY", True, GRAY)
+        screen.blit(label, (28, 164))
+        desc = self._fonts["desc"].render("Choose question pool and reward timing.", True, (132, 155, 170))
+        screen.blit(desc, (28, 184))
+
+        defs = [
+            (DIFF_EASY, "Only Easy Questions", "+5s per correct answer", CORRECT_COLOR),
+            (DIFF_MEDIUM, "Only Medium/Average Questions", "+8s per correct answer", (220, 180, 55)),
+            (DIFF_HARD, "Only Hard Questions", "+15s per correct answer", WRONG_COLOR),
+        ]
+        self._diff_rects = []
+        y = 220
+        for diff, sub, reward, color in defs:
+            rect = pygame.Rect(28, y, W - 56, 96)
+            self._diff_rects.append((diff, rect))
+            hov = rect.collidepoint(pygame.mouse.get_pos())
+            _draw_rr(screen, (32, 58, 74) if hov else CARD_BG, rect, r=12, border=2, bc=color if hov else CARD_BORDER)
+            name = self._fonts["mode"].render(DIFFICULTY_LABELS[diff], True, TEXT_COLOR)
+            screen.blit(name, (rect.x + 22, rect.y + 16))
+            s1 = self._fonts["desc"].render(sub, True, GRAY)
+            s2 = self._fonts["desc"].render(reward, True, color)
+            screen.blit(s1, (rect.x + 22, rect.y + 43))
+            screen.blit(s2, (rect.x + 22, rect.y + 64))
+            y += 112
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -396,7 +458,10 @@ class QuizPopup:
         if self._state == _QS_ANSWERED:
             if self.correct:
                 diff_key = self.data.get("diff", "easy")
-                bonus    = BONUS_HARD if diff_key == "hard" else BONUS_EASY
+                bonus = {
+                    "hard": BONUS_HARD,
+                    "medium": BONUS_MEDIUM,
+                }.get(diff_key, BONUS_EASY)
                 rt, rc   = f"✓  Correct!  +{bonus}s bonus", CORRECT_COLOR
             else:
                 rt, rc = f"✗  Wrong!   Answer: {self.data['a']}", WRONG_COLOR
@@ -613,7 +678,7 @@ class VictoryScreen:
         _center_text(screen, f"Time Remaining: {mins}:{secs:02d}",
                      self._fonts["score"], ACCENT, W // 2, H // 2 - 36)
 
-        buttons = [("retry", "Play Again", GOAL_COLOR, H // 2 + 42),
+        buttons = [("continue", "Play Continue", GOAL_COLOR, H // 2 + 42),
                    ("menu",  "Main Menu",  GRAY,       H // 2 + 110)]
         self._btns = {}
         for key, label, color, by in buttons:

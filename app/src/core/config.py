@@ -5,28 +5,30 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Window ────────────────────────────────────────────────────────────────────
-SCREEN_WIDTH  = 900          # fixed — never force-resize the desktop
-SCREEN_HEIGHT = 700
-HUD_HEIGHT    = 60           # top bar reserved for timer / lives / pause btn
+SCREEN_WIDTH  = None
+SCREEN_HEIGHT = None
+MIN_SCREEN_WIDTH = 640
+MIN_SCREEN_HEIGHT = 520
+HUD_HEIGHT    = 74           # title bar, timer, lives, pause button
 FPS           = 60
 
 # ── Normal rectangular grid ───────────────────────────────────────────────────
 CELL_SIZE = 28
-ROWS      = 21
-COLS      = 21
+ROWS      = 25
+COLS      = 25
 
 # ── Ultimate Challenge — large scrolling map ──────────────────────────────────
 # FIX #2 — camera scroll: the map is much larger than the window.
 # The renderer uses cam_x/cam_y to show only the visible slice.
-ULT_ROWS      = 41
-ULT_COLS      = 41
+ULT_ROWS      = 45
+ULT_COLS      = 45
 ULT_CELL_SIZE = 22           # slightly smaller cell so density feels right
 
 # ── Circular maze ─────────────────────────────────────────────────────────────
 # FIX #1 — polar movement is corrected in CircularMaze.can_move()
 CIRCULAR_RINGS        = 7
-CIRCULAR_BASE_SECTORS = 12
-CIRCULAR_RING_WIDTH   = 42   # pixel width of each concentric band
+CIRCULAR_BASE_SECTORS = 16
+CIRCULAR_RING_WIDTH   = 42   # baseline; renderer scales to available viewport
 
 # ── FPS ───────────────────────────────────────────────────────────────────────
 
@@ -62,11 +64,34 @@ MODE_LIGHTS_OUT  = "Lights Out"
 MODE_ULTIMATE    = "Ultimate Challenge"
 MODE_CIRCULAR    = "Circular Maze"
 
+DIFF_EASY   = "easy"
+DIFF_MEDIUM = "medium"
+DIFF_HARD   = "hard"
+DIFFICULTIES = (DIFF_EASY, DIFF_MEDIUM, DIFF_HARD)
+DIFFICULTY_LABELS = {
+    DIFF_EASY: "Easy Level",
+    DIFF_MEDIUM: "Medium Level",
+    DIFF_HARD: "Hard Level",
+}
+
 # ── Per-mode countdown timers (seconds) ──────────────────────────────────────
 TIMER_TIME_ATTACK = 180
 TIMER_LIGHTS_OUT  = 180
 TIMER_ULTIMATE    = 300
 TIMER_CIRCULAR    = 240
+
+DIFFICULTY_TIMERS = {
+    MODE_TIME_ATTACK: {
+        DIFF_EASY: 210,
+        DIFF_MEDIUM: 180,
+        DIFF_HARD: 150,
+    },
+    MODE_CIRCULAR: {
+        DIFF_EASY: 240,
+        DIFF_MEDIUM: 210,
+        DIFF_HARD: 180,
+    },
+}
 
 # ── Player ────────────────────────────────────────────────────────────────────
 PLAYER_LIVES  = 5
@@ -77,12 +102,18 @@ PLAYER_RADIUS = CELL_SIZE // 2 - 3   # visual radius for rectangular mode
 QUIZ_TIME_EASY   = 10.0   # seconds before auto-close
 QUIZ_TIME_MEDIUM = 15.0
 QUIZ_TIME_HARD   = 20.0
-QUIZ_RESULT_SHOW = 3.0    # seconds the correct/wrong banner stays visible
+QUIZ_RESULT_SHOW = 2.0    # seconds the correct/wrong banner stays visible
 QUIZ_TIMEOUT_SHOW= 2.0    # seconds the "Time Out!" overlay stays visible
 
 # Bonus time awarded for a correct answer
-BONUS_EASY = 10
-BONUS_HARD = 20
+BONUS_EASY = 5
+BONUS_MEDIUM = 8
+BONUS_HARD = 15
+BONUS_BY_DIFFICULTY = {
+    DIFF_EASY: BONUS_EASY,
+    DIFF_MEDIUM: BONUS_MEDIUM,
+    DIFF_HARD: BONUS_HARD,
+}
 
 # ── Lights-Out — FIX #3 ───────────────────────────────────────────────────────
 LIGHTS_OUT_PREVIEW_S = 3.0    # full-visibility preview duration
@@ -90,7 +121,11 @@ LIGHTS_OUT_RADIUS_PX = 110    # pixel radius of the light circle around player
 
 # ── Maze confusion — FIX #5 ───────────────────────────────────────────────────
 # Fraction of eligible wall cells converted into dead-end stubs.
-CONFUSION_STUB_RATIO = 0.28
+CONFUSION_STUB_RATIO = 0.82
+
+# ── Movement ─────────────────────────────────────────────────────────────────
+MOVE_SPEED_CELLS = 8.5
+CIRCULAR_MOVE_SPEED_CELLS = 8.0
 
 
 
